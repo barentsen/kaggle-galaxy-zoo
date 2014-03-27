@@ -13,15 +13,15 @@ from skimage.util import img_as_float
 from skimage import io
 
 # Where is the competition data?
-PATH_PROJECT = '/home/gb/proj/kaggle'
-PATH_TRAINING_DATA = os.path.join(PATH_PROJECT, 'data/images_training_rev1')
-PATH_BENCHMARK_DATA = os.path.join(PATH_PROJECT, 'data/images_test_rev1')
-PATH_TEMPLATES = os.path.join(PATH_PROJECT, 'scripts/templates')
+PATH_DATA = '/home/gb/proj/kaggle/data'
+PATH_TRAINING_DATA = os.path.join(PATH_DATA, 'images_training_rev1')
+PATH_BENCHMARK_DATA = os.path.join(PATH_DATA, 'images_test_rev1')
+PATH_TEMPLATES = os.path.join(PATH_DATA, 'templates')
 CLASSES = ['Class1.1', 'Class1.2', 'Class1.3', 'Class2.1', 'Class2.2',
            'Class3.1', 'Class3.2', 'Class4.1', 'Class4.2', 'Class5.1',
            'Class5.2', 'Class5.3', 'Class5.4', 'Class6.1', 'Class6.2',
            'Class7.1', 'Class7.2', 'Class7.3', 'Class8.1', 'Class8.2',
-           'Class8.3',' Class8.4', 'Class8.5', 'Class8.6', 'Class8.7',
+           'Class8.3', 'Class8.4', 'Class8.5', 'Class8.6', 'Class8.7',
            'Class9.1', 'Class9.2', 'Class9.3', 'Class10.1', 'Class10.2',
            'Class10.3', 'Class11.1', 'Class11.2', 'Class11.3', 'Class11.4',
            'Class11.5', 'Class11.6']
@@ -148,6 +148,13 @@ class Galaxy(object):
 
         # Gaussian fit
         feat['gauss_width_x'], feat['gauss_width_y'], feat['gauss_chi2'] = self.gaussfit()
+
+        # Template fits
+        for myclass in CLASSES:
+            mu = np.load(os.path.join(PATH_DATA, 'templates', myclass+'_2_mean.npy'))
+            sigma = np.load(os.path.join(PATH_DATA, 'templates', myclass+'_2_std.npy'))
+            feat['template_'+myclass] = np.mean((mu - self.cutouts_grey[2])**2 / sigma**2)
+
         return feat
 
     def summary(self):
@@ -173,7 +180,7 @@ def save_template(galaxylist, filename_prefix):
                 np.std(images, axis=0))
 
 def compute_templates():
-    training = Table.read('../data/training-solutions.fits')
+    training = Table.read(os.path.join(PATH_DATA, 'training-solutions.fits'))
     for feat in CLASSES:
         args = np.argsort(training[feat])
         save_template(training['GalaxyID'][args[0:1000]],
@@ -181,6 +188,8 @@ def compute_templates():
 
 def plot_templates():
     for filename in os.listdir(PATH_TEMPLATES):
+        if filename.endswith('png'):
+            continue
         path = os.path.join(PATH_TEMPLATES, filename)
         target = path+'.png'
         log.info('Creating '+target)
@@ -201,7 +210,7 @@ def compute_features_one(galaxyid):
 
 def compute_training_features():
     """Writes the solutions and features of the training data to a table."""
-    training = Table.read('../data/training-solutions.fits')
+    training = Table.read(os.path.join(PATH_DATA, 'training-solutions.fits'))
     pool = multiprocessing.Pool()
     job = pool.imap_unordered(compute_features_one, training['GalaxyID'])
     features = []
@@ -211,12 +220,14 @@ def compute_training_features():
             print "Done {0:.1f}%".format(100.*i/float(training['GalaxyID'].size))
     # Write results
     mytable = join(Table(features), training, keys=['GalaxyID'])
-    mytable.write('features/features-training.fits', overwrite=True)
+    mytable.write(os.path.join(PATH_DATA, 'features-training.fits'),
+                  overwrite=True)
 
 def compute_benchmark_features():
     """Writes the features of the benchmark data to a table."""
     pool = multiprocessing.Pool()
-    bm = np.load('../data/benchmark-zeros.npy')
+    bm = np.load(os.path.join(PATH_DATA, 'benchmark-zeros.npy'))
+
     job = pool.imap_unordered(compute_features_one, bm['galaxyid'])
     features = []
     for i, feat in enumerate(job, 1):
@@ -224,7 +235,8 @@ def compute_benchmark_features():
         if i % 50 == 0:
             print "Done {0:.1f}%".format(100.*i/float(bm['galaxyid'].size))
     # Write results
-    Table(features).write('features/features-benchmark.fits', overwrite=True)
+    Table(features).write(os.path.join(PATH_DATA, 'features-benchmark.fits'),
+                          overwrite=True)
 
 
 if __name__ == '__main__':
@@ -251,8 +263,8 @@ if __name__ == '__main__':
     plt.show()
     #plt.close()
     """
-    compute_templates()
-    plot_templates()
-    #compute_training_features()
+    #compute_templates()
+    #plot_templates()
+    compute_training_features()
     #compute_benchmark_features()
     
