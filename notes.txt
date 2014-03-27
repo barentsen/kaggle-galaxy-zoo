@@ -1,0 +1,10 @@
+Galaxy Zoo Kaggle Competition
+=============================
+
+Ideas
+=====
+* compute score per parameter to understand which need to be optimized;
+* create templates from training set.
+* try different regression models?
+* just return the most similar looking image as solution?
+* use the GINI index (?) and the M20 metrics (M20 = clustering of 20 brightest pixels)
